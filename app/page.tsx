@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Card from "@/components/Card";
+import Link from "next/link";
 import { 
   Calendar, Clock, Activity, Cpu, Gamepad2, 
   Compass, Play, Square, Send, MessageSquare 
@@ -25,9 +26,8 @@ export default function Home() {
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
       
+      {/* 1. TOP SECTION: Status & Control */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* LEFT: System Status Section */}
         <Card className="lg:col-span-2 p-6 border border-default bg-card">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -40,33 +40,24 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Date Card */}
             <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-4 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
-              <div className="p-3 bg-blue-500 rounded-xl text-white">
-                <Calendar size={20} />
-              </div>
+              <div className="p-3 bg-blue-500 rounded-xl text-white"><Calendar size={20} /></div>
               <div>
                 <p className="text-muted text-xs">Date</p>
                 <p className="text-foreground font-bold">{date}</p>
               </div>
             </div>
 
-            {/* Time Card */}
             <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center gap-4 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-              <div className="p-3 bg-purple-500 rounded-xl text-white">
-                <Clock size={20} />
-              </div>
+              <div className="p-3 bg-purple-500 rounded-xl text-white"><Clock size={20} /></div>
               <div>
                 <p className="text-muted text-xs">Time</p>
                 <p className="text-foreground font-bold">{time}</p>
               </div>
             </div>
 
-            {/* Status Card */}
             <div className="p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center gap-4 shadow-[0_0_15px_rgba(20,184,166,0.1)]">
-              <div className="p-3 bg-teal-500 rounded-xl text-white">
-                <Activity size={20} />
-              </div>
+              <div className="p-3 bg-teal-500 rounded-xl text-white"><Activity size={20} /></div>
               <div>
                 <p className="text-muted text-xs">Status</p>
                 <p className="text-teal-500 font-bold">Optimal</p>
@@ -75,7 +66,6 @@ export default function Home() {
           </div>
         </Card>
 
-        {/* RIGHT: Control Panel Section */}
         <Card className="p-6 border border-default bg-card">
           <h2 className="text-xl font-bold text-foreground mb-6">Control Panel</h2>
           <div className="space-y-4">
@@ -89,7 +79,7 @@ export default function Home() {
         </Card>
       </div>
 
-      {/* CENTER: Mode Selection Section */}
+      {/* 2. CENTER SECTION: Mode Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-10 border-2 border-teal-500/50 bg-teal-500/5 flex flex-col items-center justify-center text-center shadow-[0_0_30px_rgba(20,184,166,0.1)]">
           <div className="w-16 h-16 bg-teal-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-[0_0_20px_rgba(20,184,166,0.5)]">
@@ -100,16 +90,19 @@ export default function Home() {
           <span className="text-teal-500 text-sm mt-1">● Active</span>
         </Card>
 
-        <Card className="p-10 border border-default bg-card/50 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 mb-4">
-            <Gamepad2 size={32} />
-          </div>
-          <p className="text-muted text-sm">Mode</p>
-          <h3 className="text-xl font-bold text-foreground">Manual</h3>
-        </Card>
-      </div>
+        <Link href="/manual" className="block group"> 
+          <Card className="p-10 border border-default bg-card/50 flex flex-col items-center justify-center text-center transition-all duration-300 group-hover:border-purple-500/50 group-hover:bg-purple-500/5 group-hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] cursor-pointer">
+            <div className="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center text-purple-400 mb-4 transition-all duration-300 group-hover:bg-purple-500 group-hover:text-white group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+              <Gamepad2 size={32} />
+            </div>
+            <p className="text-muted text-sm">Mode</p>
+            <h3 className="text-xl font-bold text-foreground">Manual</h3>
+            <p className="text-[10px] text-muted mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Click to control</p>
+          </Card>
+        </Link>
+      </div> {/* ปิด div ของ Mode Selection ให้ถูกต้อง */}
 
-      {/* Direction Section */}
+      {/* 3. BOTTOM SECTION: Direction */}
       <Card className="p-8 border border-default bg-card flex flex-col items-center justify-center">
         <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-[0_0_20px_rgba(34,197,94,0.4)]">
           <Compass size={28} />
@@ -118,7 +111,7 @@ export default function Home() {
         <h3 className="text-lg font-bold text-foreground">North</h3>
       </Card>
 
-      {/* AI Assistant Section */}
+      {/* 4. AI ASSISTANT SECTION */}
       <Card className="p-6 border border-default bg-card">
         <div className="flex items-center gap-2 mb-4">
           <MessageSquare className="text-teal-500" size={20} />
