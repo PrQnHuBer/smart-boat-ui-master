@@ -3,6 +3,9 @@
 import Card from "@/components/Card";
 import { GraduationCap, Mail, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+// 1. Import รูปภาพจากโฟลเดอร์ images
+import githubLogo from "../../images/Github.png";
+import linkedinLogo from "../../images/linkedin.jpg";
 
 export default function AboutPage() {
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function AboutPage() {
           <p className="text-muted text-sm mt-1">Meet the team behind Smart Boat</p>
         </div>
       </div>
+
       {/* University Section */}
       <Card className="p-8 border border-default bg-card flex gap-6 items-center shadow-xl">
         <div className="relative shrink-0">
@@ -116,11 +120,20 @@ function TeamCard({ name, role, email, color, initial, roleColor }: any) {
       </div>
 
       <div className="flex gap-3">
-        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl text-muted transition-colors border border-default">
-          
+        {/* เปลี่ยนจาก Icon เป็นรูปภาพที่ Import มา */}
+        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl transition-colors border border-default group">
+          <img 
+            src={githubLogo.src} 
+            alt="GitHub" 
+            className="w-5 h-5 object-contain opacity-70 group-hover:opacity-100 dark:invert transition-opacity" 
+          />
         </button>
-        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl text-muted transition-colors border border-default">
-          
+        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl transition-colors border border-default group">
+          <img 
+            src={linkedinLogo.src} 
+            alt="LinkedIn" 
+            className="w-5 h-5 object-contain rounded-sm opacity-70 group-hover:opacity-100 transition-opacity" 
+          />
         </button>
       </div>
     </Card>

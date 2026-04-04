@@ -2,8 +2,11 @@
 
 import Card from "@/components/Card";
 import { useState } from "react";
+import { ArrowLeft } from "lucide-react"; // นำเข้าไอคอนย้อนกลับ
+import { useRouter } from "next/navigation"; // นำเข้า useRouter
 
 export default function ChangePasswordPage() {
+  const router = useRouter(); // สร้าง instance ของ router
   const [current, setCurrent] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -24,23 +27,34 @@ export default function ChangePasswordPage() {
 
     setError("");
     alert("Password updated successfully!");
+    
+    // ย้อนกลับไปหน้าก่อนหน้าหลังจากกดตกลง alert
+    router.back();
   };
 
   return (
     <div className="space-y-8">
-
-      {/* Title */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Change Password
-        </h1>
-        <p className="text-sm text-muted">
-          Update your account security
-        </p>
+      
+      {/* Header with Back Button (เหมือนรูปที่ 2) */}
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => router.back()} // ฟังชันย้อนกลับ
+          className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 transition"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-foreground leading-none">
+            Change Password
+          </h1>
+          <p className="text-sm text-muted">
+            Update your account security
+          </p>
+        </div>
       </div>
 
       {/* Form */}
-      <Card className="space-y-6">
+      <Card className="p-6 border border-default bg-card shadow-lg space-y-6">
 
         {/* Current Password */}
         <div className="flex flex-col gap-2">
@@ -57,11 +71,9 @@ export default function ChangePasswordPage() {
               border border-default
               rounded-xl px-4 py-3
               text-foreground
-              placeholder:text-muted
-              shadow-sm
+              placeholder:text-muted/50
               outline-none
-              focus:ring-2 focus:ring-teal-500
-              focus:border-teal-500
+              focus:ring-2 focus:ring-teal-500/50
               transition
             "
           />
@@ -82,11 +94,9 @@ export default function ChangePasswordPage() {
               border border-default
               rounded-xl px-4 py-3
               text-foreground
-              placeholder:text-muted
-              shadow-sm
+              placeholder:text-muted/50
               outline-none
-              focus:ring-2 focus:ring-teal-500
-              focus:border-teal-500
+              focus:ring-2 focus:ring-teal-500/50
               transition
             "
           />
@@ -107,34 +117,32 @@ export default function ChangePasswordPage() {
               border border-default
               rounded-xl px-4 py-3
               text-foreground
-              placeholder:text-muted
-              shadow-sm
+              placeholder:text-muted/50
               outline-none
-              focus:ring-2 focus:ring-teal-500
-              focus:border-teal-500
+              focus:ring-2 focus:ring-teal-500/50
               transition
             "
           />
         </div>
 
-        {/* Error */}
+        {/* Error Message */}
         {error && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-red-500 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
             {error}
           </p>
         )}
 
-        {/* Button */}
-        <div className="flex justify-end">
+        {/* Button Container */}
+        <div className="flex justify-end pt-4 border-t border-default">
           <button
             onClick={handleSave}
             className="
-              px-6 py-3 rounded-xl
-              bg-teal-600 hover:bg-teal-700
-              text-white font-medium
-              shadow-md
-              hover:shadow-lg
-              transition
+              px-8 py-3 rounded-xl
+              bg-teal-500 hover:bg-teal-400
+              text-white font-bold
+              shadow-[0_4px_15px_rgba(20,184,166,0.3)]
+              hover:shadow-[0_4px_20px_rgba(20,184,166,0.5)]
+              transition-all duration-200
             "
           >
             Update Password
