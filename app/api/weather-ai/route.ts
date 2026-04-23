@@ -3,54 +3,66 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const { weatherData } = await request.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+    
+    // ใส่ API Key อันใหม่ของคุณที่นี่
+    const apiKey = "AIzaSyCtirWeHeux0-VAhmVB6Hb_euerpEVJzio"; 
 
-    if (!apiKey) {
-      throw new Error("Missing GEMINI_API_KEY in Environment Variables");
+    if (!apiKey || apiKey.trim() === "") {
+      return NextResponse.json({ 
+        condition: "Key Missing", 
+        advice: "โปรดเช็คการใส่ API Key" 
+      }, { status: 500 });
     }
 
-    const prompt = `คุณคือ AI วิเคราะห์สภาพอากาศสำหรับการเดินเรือ ข้อมูลปัจจุบัน: อุณหภูมิ ${weatherData.temp}, ความชื้น ${weatherData.humidity}, ลม ${weatherData.wind}. 
-    จงวิเคราะห์และตอบกลับเป็น JSON ภาษาไทยเท่านั้น ห้ามมีคำบรรยายอื่น ห้ามใช้ markdown:
+    const prompt = `วิเคราะห์อากาศเรือ: อุณหภูมิ ${weatherData.temp}, ลม ${weatherData.wind}. 
+    ตอบกลับเป็น JSON ภาษาไทยเท่านั้น ห้ามมีคำบรรยายอื่น ห้ามมี markdown:
     {
-      "condition": "คำสรุปสั้นๆ (เช่น ท้องฟ้าแจ่มใส)",
+      "condition": "สรุปสั้นๆ",
       "emoji": "☀️",
       "temp": "${weatherData.temp}",
       "humidity": "${weatherData.humidity}",
       "wind": "${weatherData.wind}",
-      "advice": "คำแนะนำการเดินเรือสั้นๆ"
+      "advice": "คำแนะนำสั้นๆ 1 ประโยค"
     }`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          response_mime_type: "application/json",
-        }
-      }),
-    });
+    // กลับมาใช้ v1beta และใช้ชื่อโมเดลแบบเจาะจงเวอร์ชัน 001 หรือ 002
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            response_mime_type: "application/json",
+          }
+        }),
+      }
+    );
 
     const data = await response.json();
-    
-    // ตรวจสอบว่า Gemini ตอบกลับมาถูกต้องหรือไม่
+
+    if (data.error) {
+      return NextResponse.json({ 
+        condition: "API Error", 
+        advice: "Google แจ้งว่า: " + data.error.message 
+      });
+    }
+
     if (!data.candidates || !data.candidates[0].content.parts[0].text) {
-      throw new Error("Invalid response from Gemini");
+      throw new Error("AI ไม่ส่งข้อมูลกลับมา");
     }
 
     const aiText = data.candidates[0].content.parts[0].text;
     const aiResult = JSON.parse(aiText);
 
     return NextResponse.json(aiResult);
+
   } catch (error: any) {
-    console.error("Gemini Error:", error.message);
+    console.error("Backend Error:", error);
     return NextResponse.json({ 
       condition: "Error", 
-      emoji: "⚠️", 
-      temp: "--", 
-      humidity: "--", 
-      wind: "--", 
-      advice: "ไม่สามารถเชื่อมต่อ Gemini API ได้: " + error.message 
-    }, { status: 500 });
+      advice: "ระบบขัดข้อง: " + error.message 
+    });
   }
 }
