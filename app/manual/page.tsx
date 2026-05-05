@@ -1,233 +1,214 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Card from "@/components/Card";
 import { 
   ArrowLeft, ArrowUp, ArrowDown, Square, 
   RotateCcw, RotateCw, Droplets, Fan, 
-  Settings2, MoveHorizontal
+  Settings2, ArrowRight
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import mqtt from "mqtt";
 
 export default function ManualControlPage() {
   const router = useRouter();
+  const clientRef = useRef<mqtt.MqttClient | null>(null);
   
-  // --- States สำหรับควบคุมการทำงาน ---
+  // --- States สำหรับเก็บสถานะปัจจุบัน ---
   const [servoAngle, setServoAngle] = useState(0);
-  const [leftValve, setLeftValve] = useState(false); // false = Closed, true = Opened
+  const [leftValve, setLeftValve] = useState(false);
   const [rightValve, setRightValve] = useState(false);
-  const [fanMode, setFanMode] = useState("Stop"); // Forward, Stop, Backward
+  const [fanMode, setFanMode] = useState("Stop");
 
-  // ฟังก์ชันหมุน Servo แบบปุ่ม +-
-  const rotateServo = (step: number) => {
-    setServoAngle((prev) => {
-      const next = prev + step;
-      return next > 180 ? 180 : next < -180 ? -180 : next;
+  // 1. การเชื่อมต่อ MQTT ผ่าน WebSocket Secure (HiveMQ Cloud)
+  useEffect(() => {
+    const options = {
+      protocol: 'wss' as const,
+      host: 'f60614e0b5ff4800b92f0de2ce5b67fe.s1.eu.hivemq.cloud',
+      port: 8884,
+      path: '/mqtt',
+      username: 'Project',
+      password: 'Sau12345678',
+    };
+
+    const client = mqtt.connect(`wss://${options.host}:${options.port}${options.path}`, options);
+
+    client.on("connect", () => {
+      console.log("Connected to HiveMQ Cloud");
     });
+
+    clientRef.current = client;
+
+    return () => {
+      if (clientRef.current) clientRef.current.end();
+    };
+  }, []);
+
+  // ฟังก์ชันสำหรับส่งคำสั่ง MQTT
+  const sendCommand = (cmd: string) => {
+    if (clientRef.current?.connected) {
+      clientRef.current.publish("esp32/control", cmd);
+      console.log("Sent Command:", cmd);
+    }
+  };
+
+  // --- Handlers สำหรับควบคุม ---
+
+  // จัดการวาล์ว (เปิด/ปิดแยกอิสระ)
+  const handleValve = (side: "L" | "R") => {
+    if (side === "L") {
+      const newState = !leftValve;
+      setLeftValve(newState);
+      sendCommand(newState ? "valveL_on" : "valveL_off");
+    } else {
+      const newState = !rightValve;
+      setRightValve(newState);
+      sendCommand(newState ? "valveR_on" : "valveR_off");
+    }
+  };
+
+  // จัดการการเคลื่อนที่ (เดินหน้า-ถอยหลัง)
+  const handleMove = (mode: string) => {
+    setFanMode(mode);
+    if (mode === "Forward") sendCommand("forward");
+    else if (mode === "Backward") sendCommand("backward");
+    else sendCommand("move_stop"); // คำสั่งนี้จะไม่ปิดวาล์วน้ำใน ESP32
+  };
+
+  // จัดการการเลี้ยวแบบองศา (เปลี่ยนชื่อเป็น Turn และวนลูป 0-360)
+  const handleTurnStep = (dir: "L" | "R") => {
+    setServoAngle(prev => {
+      const next = dir === "L" ? prev - 22.5 : prev + 22.5;
+      return (next + 360) % 360; // Modulo เพื่อให้วนรอบกลับมาที่ 0
+    });
+    // ส่งคำสั่งชื่อ "Turn" ไปที่บอร์ด
+    sendCommand(dir === "L" ? "Turn_L_22.5" : "Turn_R_22.5");
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-[1600px] mx-auto min-h-screen">
+    <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-[1600px] mx-auto min-h-screen text-slate-200">
       
-      {/* --- LEFT SIDEBAR: Quick Control --- */}
+      {/* --- SIDEBAR: Quick Control --- */}
       <aside className="w-full lg:w-80 shrink-0">
-        <Card className="p-5 border border-default bg-card space-y-6 sticky top-4">
-          <div className="flex items-center gap-2 mb-4 border-b border-default pb-4">
-            <Settings2 size={18} className="text-teal-500" />
-            <h2 className="font-bold text-foreground">Quick Control</h2>
+        <Card className="p-5 border border-white/5 bg-[#1a2233] space-y-6 sticky top-4 rounded-2xl shadow-xl">
+          <div className="flex items-center gap-2 border-b border-white/5 pb-4">
+            <Settings2 size={20} className="text-teal-500" />
+            <h2 className="text-lg font-bold text-white">Quick Control</h2>
           </div>
 
-          {/* Valve Section (Sync กับตัวหลัก) */}
+          {/* Valve Status Summary */}
           <section className="space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Valves</p>
-            <div className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${leftValve ? "bg-blue-500/20 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]" : "bg-background border-default"}`}>
-              <span className="text-xs text-foreground flex items-center gap-2"><ArrowLeft size={14}/> Left</span>
-              <span className={`text-xs font-bold ${leftValve ? "text-blue-400" : "text-muted"}`}>{leftValve ? "ON" : "OFF"}</span>
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Valves Status</p>
+            <div className={`flex justify-between items-center p-3 rounded-xl border transition-all ${leftValve ? "bg-teal-500/10 border-teal-500/30" : "bg-[#0f172a] border-white/5"}`}>
+              <span className="text-xs font-bold flex items-center gap-2"><ArrowLeft size={16}/> Left Valve</span>
+              <span className={`text-xs font-black ${leftValve ? "text-teal-400" : "text-slate-500"}`}>{leftValve ? "ON" : "OFF"}</span>
             </div>
-            <div className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${rightValve ? "bg-blue-500/20 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.2)]" : "bg-background border-default"}`}>
-              <span className="text-xs text-foreground flex items-center gap-2"><MoveHorizontal size={14}/> Right</span>
-              <span className={`text-xs font-bold ${rightValve ? "text-blue-400" : "text-muted"}`}>{rightValve ? "ON" : "OFF"}</span>
+            <div className={`flex justify-between items-center p-3 rounded-xl border transition-all ${rightValve ? "bg-teal-500/10 border-teal-500/30" : "bg-[#0f172a] border-white/5"}`}>
+              <span className="text-xs font-bold flex items-center gap-2"><ArrowRight size={16}/> Right Valve</span>
+              <span className={`text-xs font-black ${rightValve ? "text-teal-400" : "text-slate-500"}`}>{rightValve ? "ON" : "OFF"}</span>
             </div>
           </section>
 
-          {/* Servo Section */}
-          <section className="space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Servo</p>
-            <div className="bg-background text-center py-4 rounded-xl border border-default shadow-inner">
-              <h3 className="text-2xl font-bold text-foreground">{servoAngle}°</h3>
+          {/* Servo Position Summary */}
+          <section className="space-y-3 text-center">
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Heading Position</p>
+            <div className="bg-[#0f172a] py-6 rounded-xl border border-white/5">
+              <h3 className="text-4xl font-black text-white">{servoAngle.toFixed(1)}°</h3>
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {[0, 22.5, 45, 270].map((angle) => (
-                <button 
-                  key={angle} 
-                  onClick={() => setServoAngle(angle > 180 ? angle - 360 : angle)}
-                  className={`py-2 text-[10px] rounded-lg font-bold border transition-all ${servoAngle === (angle > 180 ? angle - 360 : angle) ? "bg-teal-500 text-white border-teal-400 shadow-md" : "bg-teal-500/10 text-teal-500 border-teal-500/20 hover:bg-teal-500/20"}`}
-                >
-                  {angle}°
-                </button>
-              ))}
-            </div>
-          </section>
-
-          {/* Fan Section (Quick View) */}
-          <section className="space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Fan</p>
-            <div className={`w-full py-3 rounded-xl text-xs flex items-center justify-center gap-2 font-bold transition-all ${fanMode === "Forward" ? "bg-green-500 text-white shadow-lg shadow-green-500/30" : "bg-muted/10 text-muted"}`}><ArrowUp size={14}/> Forward</div>
-            <div className={`w-full py-3 rounded-xl text-xs flex items-center justify-center gap-2 font-bold transition-all ${fanMode === "Stop" ? "bg-white/10 text-white border border-white/20" : "bg-muted/10 text-muted"}`}><Square size={14}/> Stop</div>
-            <div className={`w-full py-3 rounded-xl text-xs flex items-center justify-center gap-2 font-bold transition-all ${fanMode === "Backward" ? "bg-red-500 text-white shadow-lg shadow-red-500/30" : "bg-muted/10 text-muted"}`}><ArrowDown size={14}/> Backward</div>
           </section>
         </Card>
       </aside>
 
-      {/* --- MAIN CONTENT AREA --- */}
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 space-y-6">
-        
-        {/* Header */}
         <div className="flex items-center gap-4">
-          <button onClick={() => router.back()} className="px-4 py-2 bg-muted/20 hover:bg-muted/30 text-foreground rounded-lg flex items-center gap-2 text-sm transition border border-default group">
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back
+          <button onClick={() => router.back()} className="px-4 py-2 bg-[#1a2233] hover:bg-[#252f44] rounded-lg flex items-center gap-2 text-sm border border-white/5 transition active:scale-95">
+            <ArrowLeft size={16} /> Back
           </button>
           <div>
-            <h1 className="text-xl font-bold text-foreground leading-none">Manual Control</h1>
-            <p className="text-muted text-[11px] mt-1">ควบคุมเรือด้วยตนเอง</p>
+            <h1 className="text-xl font-bold text-white">Manual Control Panel</h1>
+            <p className="text-slate-500 text-[11px] mt-1">ควบคุมเรือผ่านระบบ HiveMQ Cloud</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* 1. Valve Control Card */}
-          <Card className="p-6 border border-default bg-card shadow-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-400"><Droplets size={18} /></div>
-              <h2 className="font-bold text-foreground">Valve Control</h2>
+          <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-400"><Droplets size={20} /></div>
+              <h2 className="font-bold text-lg">Valve Control</h2>
             </div>
-            <p className="text-muted text-[11px] mb-6 ml-9">เปิด/ปิดวาล์วทั้ง 2 ข้าง</p>
             <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={() => setLeftValve(!leftValve)}
-                className={`flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all active:scale-95 ${leftValve ? "bg-blue-500 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]" : "bg-muted/10 border-default hover:bg-muted/20"}`}
-              >
-                <div className={`p-3 rounded-lg ${leftValve ? "bg-white text-blue-500" : "bg-blue-500/20 text-blue-400"}`}><ArrowLeft size={20}/></div>
-                <div className="text-center">
-                  <p className={`text-xs font-bold ${leftValve ? "text-white" : "text-foreground"}`}>Left Valve</p>
-                  <p className={`text-[10px] ${leftValve ? "text-blue-100" : "text-muted"}`}>{leftValve ? "Opened" : "Closed"}</p>
-                </div>
+              <button onClick={() => handleValve("L")} className={`p-8 rounded-2xl border-2 transition-all active:scale-95 ${leftValve ? "bg-blue-600 border-blue-400 shadow-lg" : "bg-[#0f172a] border-white/5"}`}>
+                <ArrowLeft size={28} className="mx-auto mb-2" />
+                <p className="text-sm font-bold">Left Valve</p>
               </button>
-
-              <button 
-                onClick={() => setRightValve(!rightValve)}
-                className={`flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all active:scale-95 ${rightValve ? "bg-blue-500 border-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.4)]" : "bg-muted/10 border-default hover:bg-muted/20"}`}
-              >
-                <div className={`p-3 rounded-lg ${rightValve ? "bg-white text-blue-500" : "bg-blue-500/20 text-blue-400"}`}><MoveHorizontal size={20}/></div>
-                <div className="text-center">
-                  <p className={`text-xs font-bold ${rightValve ? "text-white" : "text-foreground"}`}>Right Valve</p>
-                  <p className={`text-[10px] ${rightValve ? "text-blue-100" : "text-muted"}`}>{rightValve ? "Opened" : "Closed"}</p>
-                </div>
+              <button onClick={() => handleValve("R")} className={`p-8 rounded-2xl border-2 transition-all active:scale-95 ${rightValve ? "bg-blue-600 border-blue-400 shadow-lg" : "bg-[#0f172a] border-white/5"}`}>
+                <ArrowRight size={28} className="mx-auto mb-2" />
+                <p className="text-sm font-bold">Right Valve</p>
               </button>
             </div>
           </Card>
 
-          {/* 2. Servo Control Card (แก้ไขตามรูปที่ 2) */}
-          <Card className="p-6 border border-default bg-card shadow-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-400"><RotateCw size={18} /></div>
-              <h2 className="font-bold text-foreground">Servo Control</h2>
+          {/* 2. Turn Control Card (22.5°) */}
+          <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl text-center shadow-lg">
+            <div className="flex items-center gap-2 mb-4 justify-center">
+              <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><RotateCw size={20} /></div>
+              <h2 className="font-bold text-lg">Turn Control (22.5°)</h2>
             </div>
-            <p className="text-muted text-[11px] mb-6 ml-9">หมุน Servo 360 องศา</p>
-            
-            {/* Visual Gauge */}
-            <div className="relative w-32 h-32 mx-auto mb-8">
-              <div className="absolute inset-0 bg-[#2d3748]/50 rounded-full border-4 border-muted/10 shadow-inner"></div>
-              <div 
-                className="absolute top-1/2 left-1/2 w-1 h-12 bg-teal-400 origin-top rounded-full transition-transform duration-500 ease-out z-20"
-                style={{ 
-                  transform: `translate(-50%, 0%) rotate(${servoAngle + 180}deg)`,
-                  boxShadow: '0 0 10px rgba(45, 212, 191, 0.5)'
-                }}
-              >
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-teal-400 rounded-full"></div>
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-black text-white drop-shadow-md">{servoAngle}°</span>
+            <div className="flex justify-center mb-6">
+              <div className="w-24 h-24 rounded-full border-4 border-white/5 flex items-center justify-center relative">
+                <div 
+                  className="w-1 h-10 bg-teal-400 origin-bottom transition-transform duration-300 shadow-[0_0_8px_rgba(45,212,191,0.5)]" 
+                  style={{ transform: `rotate(${servoAngle}deg)` }}
+                ></div>
+                <span className="absolute font-black text-xl text-white">{servoAngle.toFixed(1)}°</span>
               </div>
             </div>
-
-            {/* Slider */}
-            <div className="space-y-2 mb-6">
-              <input type="range" min="-180" max="180" value={servoAngle} onChange={(e) => setServoAngle(parseInt(e.target.value))} className="w-full h-1.5 bg-muted/20 rounded-lg appearance-none cursor-pointer accent-teal-500" />
-              <div className="flex justify-between text-[10px] text-muted px-1">
-                <span>-180°</span><span>-90°</span><span>0°</span><span>90°</span><span>180°</span>
-              </div>
-            </div>
-
-            {/* Go Input */}
-            <div className="flex gap-2 mb-6">
-               <input type="text" placeholder="0-360" className="flex-1 bg-background border border-default rounded-lg px-4 py-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-teal-500" />
-               <button className="bg-teal-500 hover:bg-teal-400 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-lg shadow-teal-500/20">Go</button>
-            </div>
-
-            {/* Rotate Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => rotateServo(-45)} className="bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-xl text-[11px] font-bold shadow-[0_4px_15px_rgba(249,115,22,0.4)] transition-all flex flex-col items-center gap-1 active:scale-95">
-                <div className="flex items-center gap-2"><RotateCcw size={14} /> <span>Rotate Left</span></div>
-                <span className="text-[9px] opacity-80 font-normal">หมุนซ้าย (-45°)</span>
+            <div className="grid grid-cols-2 gap-4 px-2">
+              <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2">
+                <RotateCcw size={16}/> Rotate Left
               </button>
-              <button onClick={() => rotateServo(45)} className="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl text-[11px] font-bold shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all flex flex-col items-center gap-1 active:scale-95">
-                <div className="flex items-center gap-2"><RotateCw size={14} /> <span>Rotate Right</span></div>
-                <span className="text-[9px] opacity-80 font-normal">หมุนขวา (+45°)</span>
+              <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                <RotateCw size={16}/> Rotate Right
               </button>
             </div>
           </Card>
         </div>
 
-        {/* 3. Fan Control Section */}
-        <Card className="p-6 border border-default bg-card shadow-lg">
+        {/* 3. Motor Control Card (Colors & Status) */}
+        <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl shadow-xl">
           <div className="flex items-center gap-2 mb-6">
-            <div className="p-1.5 bg-teal-500/20 rounded-lg text-teal-400"><Fan size={18} /></div>
-            <h2 className="font-bold text-foreground">Fan Control</h2>
+            <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><Fan size={20} /></div>
+            <h2 className="font-bold text-lg">Motor Control</h2>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 lg:gap-8">
             <button 
-              onClick={() => setFanMode("Forward")}
-              className={`flex flex-col items-center gap-4 p-8 rounded-2xl border transition-all active:scale-95 ${fanMode === "Forward" ? "bg-green-500 border-green-400 text-white shadow-[0_0_25px_rgba(34,197,94,0.4)]" : "bg-muted/10 border-default text-muted hover:bg-muted/20"}`}
+              onClick={() => handleMove("Forward")} 
+              className={`p-10 rounded-[2rem] border-2 transition-all active:scale-95 ${fanMode === "Forward" ? "bg-green-500 border-green-400 shadow-green-500/40 shadow-xl" : "bg-[#0f172a] border-white/5 text-slate-500"}`}
             >
-              <ArrowUp size={24} />
-              <div className="text-center"><p className="text-xs font-bold">Forward</p> {fanMode === "Forward" && <span className="text-[10px] opacity-80">● Active</span>}</div>
+              <ArrowUp size={36} className="mx-auto" />
+              <p className="font-black text-sm mt-3 tracking-widest uppercase">Forward</p>
             </button>
-
+            
             <button 
-              onClick={() => setFanMode("Stop")}
-              className={`flex flex-col items-center gap-4 p-8 rounded-2xl border transition-all active:scale-95 ${fanMode === "Stop" ? "bg-white/10 border-white/30 text-white shadow-2xl" : "bg-muted/10 border-default text-muted hover:bg-muted/20"}`}
+              onClick={() => handleMove("Stop")} 
+              className={`p-10 rounded-[2rem] border-2 transition-all active:scale-95 ${fanMode === "Stop" ? "bg-red-500 border-red-400 shadow-red-500/40 shadow-xl" : "bg-[#0f172a] border-white/5 text-slate-500"}`}
             >
-              <Square size={24} />
-              <div className="text-center"><p className="text-xs font-bold">Stop</p> {fanMode === "Stop" && <span className="text-[10px] text-teal-400 font-bold">● Active</span>}</div>
+              <Square size={36} className="mx-auto" />
+              <p className="font-black text-sm mt-3 tracking-widest uppercase">Stop</p>
             </button>
-
+            
             <button 
-              onClick={() => setFanMode("Backward")}
-              className={`flex flex-col items-center gap-4 p-8 rounded-2xl border transition-all active:scale-95 ${fanMode === "Backward" ? "bg-red-500 border-red-400 text-white shadow-[0_0_25px_rgba(239,68,68,0.4)]" : "bg-muted/10 border-default text-muted hover:bg-muted/20"}`}
+              onClick={() => handleMove("Backward")} 
+              className={`p-10 rounded-[2rem] border-2 transition-all active:scale-95 ${fanMode === "Backward" ? "bg-yellow-500 border-yellow-400 shadow-yellow-500/40 shadow-xl" : "bg-[#0f172a] border-white/5 text-slate-500"}`}
             >
-              <ArrowDown size={24} />
-              <div className="text-center"><p className="text-xs font-bold">Backward</p> {fanMode === "Backward" && <span className="text-[10px] opacity-80">● Active</span>}</div>
+              <ArrowDown size={36} className="mx-auto" />
+              <p className="font-black text-sm mt-3 tracking-widest uppercase">Backward</p>
             </button>
           </div>
         </Card>
-
-        {/* 4. Current Status Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Left Valve", val: leftValve ? "Opened" : "Closed", color: leftValve ? "bg-blue-500/20 text-blue-400 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)]" : "bg-muted/5 text-muted border-default" },
-            { label: "Right Valve", val: rightValve ? "Opened" : "Closed", color: rightValve ? "bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.1)]" : "bg-muted/5 text-muted border-default" },
-            { label: "Servo Angle", val: `${servoAngle}°`, color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-            { label: "Fan Mode", val: fanMode, color: fanMode === "Forward" ? "bg-green-500/10 text-green-400" : fanMode === "Backward" ? "bg-red-500/10 text-red-400" : "bg-muted/10 text-muted" },
-          ].map((item, idx) => (
-            <div key={idx} className={`p-4 rounded-xl border transition-all duration-300 ${item.color}`}>
-              <p className="text-[10px] opacity-70 mb-1 font-bold uppercase tracking-tighter">{item.label}</p>
-              <p className="text-sm font-black">{item.val}</p>
-            </div>
-          ))}
-        </div>
-
       </main>
     </div>
   );
