@@ -44,17 +44,18 @@ export default function ManualControlPage() {
     };
   }, []);
 
-  // ฟังก์ชันสำหรับส่งคำสั่ง MQTT
+  // ฟังก์ชันสำหรับส่งคำสั่ง MQTT ไปยัง Topic: esp32/control
   const sendCommand = (cmd: string) => {
     if (clientRef.current?.connected) {
+      // ส่งข้อมูลไปยัง Topic ที่ ESP32 รอรับอยู่
       clientRef.current.publish("esp32/control", cmd);
-      console.log("Sent Command:", cmd);
+      console.log("Sent Command to esp32/control:", cmd);
     }
   };
 
   // --- Handlers สำหรับควบคุม ---
 
-  // จัดการวาล์ว (เปิด/ปิดแยกอิสระ)
+  // จัดการวาล์ว (Payload: valveL_on, valveL_off, valveR_on, valveR_off)
   const handleValve = (side: "L" | "R") => {
     if (side === "L") {
       const newState = !leftValve;
@@ -67,21 +68,26 @@ export default function ManualControlPage() {
     }
   };
 
-  // จัดการการเคลื่อนที่ (เดินหน้า-ถอยหลัง)
+  // จัดการการเคลื่อนที่ (Payload: forward, backward, stop)
   const handleMove = (mode: string) => {
     setFanMode(mode);
-    if (mode === "Forward") sendCommand("forward");
-    else if (mode === "Backward") sendCommand("backward");
-    else sendCommand("move_stop"); // คำสั่งนี้จะไม่ปิดวาล์วน้ำใน ESP32
+    if (mode === "Forward") {
+      sendCommand("forward");
+    } else if (mode === "Backward") {
+      sendCommand("backward");
+    } else {
+      // แก้ไขเป็น "stop" เพื่อเรียกฟังก์ชัน boatStop() ใน ESP32 ให้รีเลย์ดับจริง
+      sendCommand("stop"); 
+    }
   };
 
-  // จัดการการเลี้ยวแบบองศา (เปลี่ยนชื่อเป็น Turn และวนลูป 0-360)
+  // จัดการการเลี้ยว (Payload: Turn_L_22.5, Turn_R_22.5)
   const handleTurnStep = (dir: "L" | "R") => {
     setServoAngle(prev => {
       const next = dir === "L" ? prev - 22.5 : prev + 22.5;
-      return (next + 360) % 360; // Modulo เพื่อให้วนรอบกลับมาที่ 0
+      return (next + 360) % 360; 
     });
-    // ส่งคำสั่งชื่อ "Turn" ไปที่บอร์ด
+    // ส่งคำสั่งให้บอร์ดขยับรีเลย์เลี้ยว
     sendCommand(dir === "L" ? "Turn_L_22.5" : "Turn_R_22.5");
   };
 
@@ -96,7 +102,6 @@ export default function ManualControlPage() {
             <h2 className="text-lg font-bold text-white">Quick Control</h2>
           </div>
 
-          {/* Valve Status Summary */}
           <section className="space-y-3">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Valves Status</p>
             <div className={`flex justify-between items-center p-3 rounded-xl border transition-all ${leftValve ? "bg-teal-500/10 border-teal-500/30" : "bg-[#0f172a] border-white/5"}`}>
@@ -109,7 +114,6 @@ export default function ManualControlPage() {
             </div>
           </section>
 
-          {/* Servo Position Summary */}
           <section className="space-y-3 text-center">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Heading Position</p>
             <div className="bg-[#0f172a] py-6 rounded-xl border border-white/5">
@@ -132,7 +136,6 @@ export default function ManualControlPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
           {/* 1. Valve Control Card */}
           <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl">
             <div className="flex items-center gap-2 mb-4">
@@ -151,7 +154,7 @@ export default function ManualControlPage() {
             </div>
           </Card>
 
-          {/* 2. Turn Control Card (22.5°) */}
+          {/* 2. Turn Control Card */}
           <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl text-center shadow-lg">
             <div className="flex items-center gap-2 mb-4 justify-center">
               <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><RotateCw size={20} /></div>
@@ -160,24 +163,24 @@ export default function ManualControlPage() {
             <div className="flex justify-center mb-6">
               <div className="w-24 h-24 rounded-full border-4 border-white/5 flex items-center justify-center relative">
                 <div 
-                  className="w-1 h-10 bg-teal-400 origin-bottom transition-transform duration-300 shadow-[0_0_8px_rgba(45,212,191,0.5)]" 
+                  className="w-1 h-10 bg-teal-400 origin-bottom transition-transform duration-300" 
                   style={{ transform: `rotate(${servoAngle}deg)` }}
                 ></div>
                 <span className="absolute font-black text-xl text-white">{servoAngle.toFixed(1)}°</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 px-2">
-              <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2">
+              <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2">
                 <RotateCcw size={16}/> Rotate Left
               </button>
-              <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+              <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2">
                 <RotateCw size={16}/> Rotate Right
               </button>
             </div>
           </Card>
         </div>
 
-        {/* 3. Motor Control Card (Colors & Status) */}
+        {/* 3. Motor Control Card (สำคัญ: ปุ่ม STOP จะส่ง "stop") */}
         <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl shadow-xl">
           <div className="flex items-center gap-2 mb-6">
             <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><Fan size={20} /></div>
