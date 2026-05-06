@@ -1,8 +1,36 @@
+"use client";
+
 import { User, Lock, Bell, Info } from "lucide-react";
 import Card from "@/components/Card";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { supabase } from "@/supabase"; // มั่นใจว่า import ถูกที่นะครับ
 
 export default function SettingsPage() {
+  const [enabled, setEnabled] = useState(true);
+  
+  // เพิ่ม State เพื่อเก็บข้อมูลโปรไฟล์จริง
+  const [name, setName] = useState("Loading...");
+  const [username, setUsername] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // ดึงข้อมูลจาก Supabase ทันทีที่โหลดหน้า
+  useEffect(() => {
+    async function fetchProfile() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, username, avatar_url")
+        .single();
+
+      if (data) {
+        setName(data.full_name || "User");
+        setUsername(data.username || "");
+        setAvatarUrl(data.avatar_url || null);
+      }
+    }
+    fetchProfile();
+  }, []);
+
   return (
     <div className="space-y-8 p-4">
       {/* Title Section */}
@@ -13,17 +41,27 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile Card */}
+      {/* Profile Card - ปรับปรุงให้ดึงข้อมูลจาก State */}
       <Card className="p-6 border border-default bg-card shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-teal-500 flex items-center justify-center text-xl font-bold text-white">
-            W
+          <div className="relative">
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="Profile" 
+                className="w-14 h-14 rounded-full object-cover border-2 border-teal-500 shadow-sm"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-teal-500 flex items-center justify-center text-xl font-bold text-white">
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
 
           <div>
-            <h2 className="font-semibold text-lg text-foreground">Woraprat</h2>
+            <h2 className="font-semibold text-lg text-foreground">{name}</h2>
             <p className="text-muted text-sm">
-              woraprat@smartboat.com
+              {username ? `@${username}` : "woraprat@smartboat.com"}
             </p>
             <span className="inline-block mt-1 text-xs bg-green-500/20 text-green-600 dark:text-green-400 px-3 py-1 rounded-full">
               Administrator
@@ -62,28 +100,39 @@ export default function SettingsPage() {
               <Bell size={18} />
             </div>
             <div>
-              <p className="text-foreground">Notifications</p>
+              <p className="text-foreground font-medium">Notifications</p>
               <p className="text-sm text-muted">
                 Receive system alerts and updates
               </p>
             </div>
           </div>
 
-          {/* Toggle Switch */}
-          <div className="w-11 h-6 bg-muted/30 rounded-full relative cursor-pointer transition-colors">
-            <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 shadow-sm transition-transform"></div>
-          </div>
+          {/* Toggle Switch ที่เลื่อนได้จริง */}
+          <button
+            onClick={() => setEnabled(!enabled)}
+            className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out ${
+              enabled ? "bg-teal-500" : "bg-muted/30"
+            }`}
+          >
+            <div
+              className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-200 ease-in-out ${
+                enabled ? "translate-x-6" : "translate-x-1"
+              }`}
+            ></div>
+          </button>
         </div>
       </Card>
 
       {/* About Section */}
-      <Card className="p-6 border border-default bg-card shadow-sm">
-        <SettingItem
-          icon={<Info size={18} />}
-          title="About Us"
-          desc="Learn more about our team"
-        />
-      </Card>
+      <Link href="/about" className="block">
+        <Card className="p-6 border border-default bg-card shadow-sm hover:bg-muted/5 transition-colors">
+          <SettingItem
+            icon={<Info size={18} />}
+            title="About Us"
+            desc="Learn more about our team"
+          />
+        </Card>
+      </Link>
     </div>
   );
 }
@@ -98,7 +147,7 @@ function SettingItem({
   desc: string;
 }) {
   return (
-    <div className="flex items-center justify-between py-4 px-2 rounded-xl cursor-pointer hover:bg-muted/5 transition-colors">
+    <div className="flex items-center justify-between py-4 px-2 rounded-xl transition-colors">
       <div className="flex items-center gap-3">
         <div className="p-3 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
           {icon}
@@ -108,8 +157,7 @@ function SettingItem({
           <p className="text-sm text-muted">{desc}</p>
         </div>
       </div>
-
-      <span className="text-muted text-xl">›</span>
+      <span className="text-muted text-xl opacity-50">›</span>
     </div>
   );
 }

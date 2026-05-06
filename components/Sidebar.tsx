@@ -8,10 +8,21 @@ import {
   LayoutDashboard,
   Settings,
   Info,
+  LogOut, // นำเข้าไอคอน LogOut
 } from "lucide-react";
 
 export default function Sidebar() {
-  const pathname = usePathname(); // 🔥 เอาไว้เช็คหน้าปัจจุบัน
+  const pathname = usePathname();
+
+  // ฟังก์ชันสำหรับการ Logout
+  const handleLogout = () => {
+    if (confirm("คุณต้องการออกจากระบบใช่หรือไม่?")) {
+      // 1. ล้างข้อมูล Session ในเครื่อง
+      localStorage.removeItem("user_session");
+      // 2. ดีดกลับไปหน้า Login โดยใช้ window.location เพื่อรีเฟรชสถานะทั้งหมด
+      window.location.href = "/login";
+    }
+  };
 
   return (
     <div
@@ -19,7 +30,7 @@ export default function Sidebar() {
       bg-[var(--background)] text-[var(--foreground)]
       border-r border-gray-200/50 dark:border-gray-700 transition-colors"
     >
-      {/* Top */}
+      {/* Top Section */}
       <div>
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
@@ -71,9 +82,18 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Bottom */}
-      <div className="w-10 h-10 rounded-full bg-gray-800 text-white flex items-center justify-center">
-        N
+      {/* Bottom Section - ปุ่ม Logout */}
+      <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium
+          text-red-500 hover:bg-red-500/10 transition-all duration-200 group"
+        >
+          <div className="p-2 rounded-lg bg-red-500/10 group-hover:bg-red-500 text-red-500 group-hover:text-white transition-colors">
+            <LogOut size={18} />
+          </div>
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   );
