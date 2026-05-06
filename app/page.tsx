@@ -6,27 +6,63 @@ import { Cpu, Gamepad2, Calendar, Clock, Activity, MessageSquare } from "lucide-
 import Link from "next/link";
 import { useRouter } from "next/navigation"; 
 import Header from "@/components/Header";
+import mqtt from "mqtt"; // 1. นำเข้าไลบรารี MQTT
 
 export default function HomePage() {
   const router = useRouter();
+  const clientRef = useRef<mqtt.MqttClient | null>(null); // 2. สร้าง Ref สำหรับเก็บการเชื่อมต่อ
   const [isAuto, setIsAuto] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // 1. ระบบตรวจสอบสิทธิ์แบบเข้มงวด
+  // 3. ตั้งค่าการเชื่อมต่อ MQTT เมื่อเข้าหน้าแรก
+  useEffect(() => {
+    const options = {
+      protocol: 'wss' as const,
+      host: 'f60614e0b5ff4800b92f0de2ce5b67fe.s1.eu.hivemq.cloud',
+      port: 8884,
+      path: '/mqtt',
+      username: 'Project',
+      password: 'Sau12345678',
+    };
+
+    const client = mqtt.connect(`wss://${options.host}:${options.port}${options.path}`, options);
+
+    client.on("connect", () => {
+      console.log("HomePage connected to MQTT");
+    });
+
+    clientRef.current = client;
+
+    return () => {
+      if (clientRef.current) clientRef.current.end();
+    };
+  }, []);
+
+  // 4. ฟังก์ชันจัดการเมื่อกดปุ่ม Auto (สลับสถานะ + ส่ง Topic)
+  const handleToggleAuto = () => {
+    const nextState = !isAuto;
+    setIsAuto(nextState);
+
+    if (clientRef.current?.connected) {
+      // ส่ง Payload ตามสถานะ: true -> auto_start, false -> auto_stop
+      const payload = nextState ? "auto_start" : "auto_stop";
+      clientRef.current.publish("esp32/control", payload);
+      console.log("Published:", payload);
+    }
+  };
+
+  // --- Logic เดิม (ตรวจสอบสิทธิ์และเวลา) ---
   useEffect(() => {
     const session = localStorage.getItem("user_session");
     if (!session) {
-      // ถ้าไม่มีข้อมูลการ Login ให้เด้งไปหน้า Login ทันที
       router.replace("/login"); 
     } else {
-      // ถ้ามีข้อมูลแล้วถึงจะยอมให้แสดงเนื้อหา
       setIsAuthLoading(false);
     }
   }, [router]);
 
-  // 2. จัดการเรื่องเวลาและวันที่
   useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
@@ -38,7 +74,6 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
-  // ระหว่างที่เช็คสิทธิ์ (isAuthLoading) จะไม่แสดงเนื้อหา Dashboard เด็ดขาด
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -99,7 +134,8 @@ export default function HomePage() {
 
       {/* --- MODE SELECTION --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <button onClick={() => setIsAuto(!isAuto)} className="text-left active:scale-[0.98] transition-all">
+        {/* เปลี่ยน onClick จากสลับแค่ State เป็นเรียกใช้ฟังก์ชัน handleToggleAuto */}
+        <button onClick={handleToggleAuto} className="text-left active:scale-[0.98] transition-all">
           <Card className={`p-12 flex flex-col items-center justify-center border-2 transition-all duration-500 rounded-[2.5rem] ${isAuto ? "bg-teal-500/10 border-teal-500 shadow-xl" : "bg-white dark:bg-[#1a2233] border-slate-200 dark:border-white/5 hover:border-teal-500/50"}`}>
             <div className={`p-5 rounded-2xl mb-4 transition-all duration-500 ${isAuto ? "bg-teal-500 text-white shadow-lg" : "bg-teal-500/10 text-teal-500"}`}>
               <Cpu size={40} />
