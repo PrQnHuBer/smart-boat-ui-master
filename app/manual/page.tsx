@@ -69,24 +69,17 @@ export default function ManualControlPage() {
     }
   };
 
+  // --- ปรับปรุงฟังก์ชันเลี้ยวเป็น 11 องศา และแก้ Topic ---
   const handleTurnStep = (dir: "L" | "R") => {
     setServoAngle(prev => {
-      const next = dir === "L" ? prev - 22.5 : prev + 22.5;
+      const next = dir === "L" ? prev - 11 : prev + 11;
       return (next + 360) % 360; 
     });
-    sendCommand(dir === "L" ? "Turn_L_22.5" : "Turn_R_22.5");
-  };
-
-  const handleTurnStep15 = (dir: "L" | "R") => {
-    setServoAngle(prev => {
-      const next = dir === "L" ? prev - 15 : prev + 15;
-      return (next + 360) % 360; 
-    });
-    sendCommand(dir === "L" ? "Turn_L_15" : "Turn_R_15");
+    // ส่ง Topic ใหม่เป็น Turn_L_11 หรือ Turn_R_11
+    sendCommand(dir === "L" ? "Turn_L_11" : "Turn_R_11");
   };
 
   return (
-    // เปลี่ยนพื้นหลังให้รองรับ dark/light
     <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-[1600px] mx-auto min-h-screen bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-200 transition-colors duration-300">
       
       <aside className="w-full lg:w-80 shrink-0">
@@ -148,7 +141,7 @@ export default function ManualControlPage() {
 
           <Card className="p-6 bg-white dark:bg-[#1a2233] border border-slate-200 dark:border-white/5 rounded-3xl text-center shadow-sm">
             <div className="flex items-center gap-2 mb-4 justify-center">
-              <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-500"><RotateCw size={20} /></div>
+              <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><RotateCw size={20} /></div>
               <h2 className="font-bold text-lg text-slate-900 dark:text-white">Turn Control</h2>
             </div>
             <div className="flex justify-center mb-6">
@@ -161,22 +154,14 @@ export default function ManualControlPage() {
               </div>
             </div>
             
-            <div className="space-y-3 px-2">
+            {/* เหลือแถวปุ่มเพียงแถวเดียว ปรับเป็น 11 องศา */}
+            <div className="px-2">
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20">
-                  <RotateCcw size={16}/> Rotate Left (22.5°)
+                <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-4 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20">
+                  <RotateCcw size={16}/> Rotate Left (11°)
                 </button>
-                <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
-                  <RotateCw size={16}/> Rotate Right (22.5°)
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-white/5 pt-3">
-                <button onClick={() => handleTurnStep15("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20">
-                  <RotateCcw size={16}/> Rotate Left (15°)
-                </button>
-                <button onClick={() => handleTurnStep15("R")} className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
-                  <RotateCw size={16}/> Rotate Right (15°)
+                <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+                  <RotateCw size={16}/> Rotate Right (11°)
                 </button>
               </div>
             </div>
