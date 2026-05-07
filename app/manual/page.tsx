@@ -14,13 +14,11 @@ export default function ManualControlPage() {
   const router = useRouter();
   const clientRef = useRef<mqtt.MqttClient | null>(null);
   
-  // --- States สำหรับเก็บสถานะปัจจุบัน ---
   const [servoAngle, setServoAngle] = useState(0);
   const [leftValve, setLeftValve] = useState(false);
   const [rightValve, setRightValve] = useState(false);
   const [fanMode, setFanMode] = useState("Stop");
 
-  // 1. การเชื่อมต่อ MQTT ผ่าน WebSocket Secure (HiveMQ Cloud)
   useEffect(() => {
     const options = {
       protocol: 'wss' as const,
@@ -32,30 +30,22 @@ export default function ManualControlPage() {
     };
 
     const client = mqtt.connect(`wss://${options.host}:${options.port}${options.path}`, options);
-
     client.on("connect", () => {
       console.log("Connected to HiveMQ Cloud");
     });
-
     clientRef.current = client;
-
     return () => {
       if (clientRef.current) clientRef.current.end();
     };
   }, []);
 
-  // ฟังก์ชันสำหรับส่งคำสั่ง MQTT ไปยัง Topic: esp32/control
   const sendCommand = (cmd: string) => {
     if (clientRef.current?.connected) {
-      // ส่งข้อมูลไปยัง Topic ที่ ESP32 รอรับอยู่
       clientRef.current.publish("esp32/control", cmd);
       console.log("Sent Command to esp32/control:", cmd);
     }
   };
 
-  // --- Handlers สำหรับควบคุม ---
-
-  // จัดการวาล์ว (Payload: valveL_on, valveL_off, valveR_on, valveR_off)
   const handleValve = (side: "L" | "R") => {
     if (side === "L") {
       const newState = !leftValve;
@@ -68,7 +58,6 @@ export default function ManualControlPage() {
     }
   };
 
-  // จัดการการเคลื่อนที่ (Payload: forward, backward, stop)
   const handleMove = (mode: string) => {
     setFanMode(mode);
     if (mode === "Forward") {
@@ -76,25 +65,29 @@ export default function ManualControlPage() {
     } else if (mode === "Backward") {
       sendCommand("backward");
     } else {
-      // แก้ไขเป็น "stop" เพื่อเรียกฟังก์ชัน boatStop() ใน ESP32 ให้รีเลย์ดับจริง
       sendCommand("stop"); 
     }
   };
 
-  // จัดการการเลี้ยว (Payload: Turn_L_22.5, Turn_R_22.5)
   const handleTurnStep = (dir: "L" | "R") => {
     setServoAngle(prev => {
       const next = dir === "L" ? prev - 22.5 : prev + 22.5;
       return (next + 360) % 360; 
     });
-    // ส่งคำสั่งให้บอร์ดขยับรีเลย์เลี้ยว
     sendCommand(dir === "L" ? "Turn_L_22.5" : "Turn_R_22.5");
+  };
+
+  const handleTurnStep15 = (dir: "L" | "R") => {
+    setServoAngle(prev => {
+      const next = dir === "L" ? prev - 15 : prev + 15;
+      return (next + 360) % 360; 
+    });
+    sendCommand(dir === "L" ? "Turn_L_15" : "Turn_R_15");
   };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-[1600px] mx-auto min-h-screen text-slate-200">
       
-      {/* --- SIDEBAR: Quick Control --- */}
       <aside className="w-full lg:w-80 shrink-0">
         <Card className="p-5 border border-white/5 bg-[#1a2233] space-y-6 sticky top-4 rounded-2xl shadow-xl">
           <div className="flex items-center gap-2 border-b border-white/5 pb-4">
@@ -123,7 +116,6 @@ export default function ManualControlPage() {
         </Card>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 space-y-6">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="px-4 py-2 bg-[#1a2233] hover:bg-[#252f44] rounded-lg flex items-center gap-2 text-sm border border-white/5 transition active:scale-95">
@@ -136,7 +128,6 @@ export default function ManualControlPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 1. Valve Control Card */}
           <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-400"><Droplets size={20} /></div>
@@ -154,33 +145,45 @@ export default function ManualControlPage() {
             </div>
           </Card>
 
-          {/* 2. Turn Control Card */}
           <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl text-center shadow-lg">
             <div className="flex items-center gap-2 mb-4 justify-center">
               <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><RotateCw size={20} /></div>
-              <h2 className="font-bold text-lg">Turn Control (22.5°)</h2>
+              <h2 className="font-bold text-lg">Turn Control</h2>
             </div>
             <div className="flex justify-center mb-6">
               <div className="w-24 h-24 rounded-full border-4 border-white/5 flex items-center justify-center relative">
                 <div 
-                  className="w-1 h-10 bg-teal-400 origin-bottom transition-transform duration-300" 
+                  className="w-1 h-10 bg-teal-400 origin-bottom transition-transform duration-300 shadow-[0_0_8px_rgba(45,212,191,0.5)]" 
                   style={{ transform: `rotate(${servoAngle}deg)` }}
                 ></div>
                 <span className="absolute font-black text-xl text-white">{servoAngle.toFixed(1)}°</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 px-2">
-              <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2">
-                <RotateCcw size={16}/> Rotate Left
-              </button>
-              <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2">
-                <RotateCw size={16}/> Rotate Right
-              </button>
+            
+            <div className="space-y-3 px-2">
+              {/* แถวปุ่ม 22.5 องศา */}
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-900/20">
+                  <RotateCcw size={16}/> Rotate Left (22.5°)
+                </button>
+                <button onClick={() => handleTurnStep("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+                  <RotateCw size={16}/> Rotate Right (22.5°)
+                </button>
+              </div>
+              
+              {/* แถวปุ่ม 15 องศา */}
+              <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-3">
+                <button onClick={() => handleTurnStep15("L")} className="bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-900/20">
+                  <RotateCcw size={16}/> Rotate Left (15°)
+                </button>
+                <button onClick={() => handleTurnStep15("R")} className="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+                  <RotateCw size={16}/> Rotate Right (15°)
+                </button>
+              </div>
             </div>
           </Card>
         </div>
 
-        {/* 3. Motor Control Card (สำคัญ: ปุ่ม STOP จะส่ง "stop") */}
         <Card className="p-6 bg-[#1a2233] border border-white/5 rounded-3xl shadow-xl">
           <div className="flex items-center gap-2 mb-6">
             <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><Fan size={20} /></div>
