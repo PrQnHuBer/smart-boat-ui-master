@@ -196,10 +196,10 @@ export default function ManualControlPage() {
               </div>
               {/* 22.5 Degree Buttons */}
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => handleTurnWide("L")} className="bg-orange-700 hover:bg-orange-600 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-700/20">
+                <button onClick={() => handleTurnWide("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-700/20">
                   <RotateCcw size={14}/> Left (22.5°)
                 </button>
-                <button onClick={() => handleTurnWide("R")} className="bg-blue-700 hover:bg-blue-600 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-700/20">
+                <button onClick={() => handleTurnWide("R")} className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-blue-700/20">
                   <RotateCw size={14}/> Right (22.5°)
                 </button>
               </div>

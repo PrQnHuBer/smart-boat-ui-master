@@ -1,15 +1,16 @@
 "use client";
 
-import { Bell, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react"; // ลบ Bell ออก
 import { useEffect, useState } from "react";
-import { supabase } from "../supabase"; // ดึงตัวแปร supabase จาก Root
-import Link from "next/link"; // สำหรับทำลิงก์ไปยังหน้า Setting
+import { supabase } from "../supabase"; 
+import Link from "next/link"; 
 
 export default function Header() {
   const [dark, setDark] = useState(false);
   const [displayName, setDisplayName] = useState("Loading...");
+  const [avatarUrl, setAvatarUrl] = useState(null); // เพิ่ม state สำหรับรูปโปรไฟล์
 
-  // 1. จัดการเรื่อง Theme (ดึงค่าและบันทึกลง localStorage)
+  // 1. จัดการเรื่อง Theme
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
@@ -32,17 +33,18 @@ export default function Header() {
   useEffect(() => {
     async function getProfile() {
       try {
-        // ดึงข้อมูลแถวเดียวจากตาราง profiles
+        // ดึง full_name และ avatar_url จากตาราง profiles
         const { data, error } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, avatar_url')
           .single();
 
         if (data) {
           setDisplayName(data.full_name);
+          setAvatarUrl(data.avatar_url); // เก็บค่า URL ของรูปภาพ
         } else if (error) {
           console.error("Supabase error:", error.message);
-          setDisplayName("Woraprat"); // ค่าเริ่มต้นกรณีโหลดไม่สำเร็จ
+          setDisplayName("Woraprat"); 
         }
       } catch (err) {
         setDisplayName("Woraprat");
@@ -64,7 +66,7 @@ export default function Header() {
         </p>
       </div>
 
-      {/* ส่วนขวา: ปุ่มสลับธีม, แจ้งเตือน และลิงก์โปรไฟล์ */}
+      {/* ส่วนขวา: ปุ่มสลับธีม และลิงก์โปรไฟล์ (ลบ Bell ออกแล้ว) */}
       <div className="flex items-center gap-4">
         
         {/* 🌙 ปุ่มสลับธีม */}
@@ -75,10 +77,7 @@ export default function Header() {
           {dark ? <Sun className="text-yellow-400" /> : <Moon className="text-slate-500" />}
         </button>
 
-        {/* 🔔 แจ้งเตือน */}
-        <Bell className="text-slate-500 dark:text-slate-400 cursor-pointer hover:text-teal-500 transition-colors" />
-
-        {/* 👤 โปรไฟล์ (กดแล้วไปหน้า Setting/Profile) */}
+        {/* 👤 โปรไฟล์ */}
         <Link 
           href="/settings/profile" 
           className="flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-white/5 p-2 rounded-xl transition-all group"
@@ -89,8 +88,14 @@ export default function Header() {
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Admin</p>
           </div>
-          <div className="w-10 h-10 bg-teal-500 text-white flex items-center justify-center rounded-full font-bold shadow-sm group-hover:ring-2 group-hover:ring-teal-500/50 transition-all">
-            {displayName !== "Loading..." ? displayName.charAt(0).toUpperCase() : "W"}
+          
+          {/* ส่วนแสดงรูปภาพ: ถ้ามี avatarUrl ให้โชว์รูป ถ้าไม่มีให้โชว์ตัวอักษรตัวแรก */}
+          <div className="w-10 h-10 overflow-hidden bg-teal-500 text-white flex items-center justify-center rounded-full font-bold shadow-sm group-hover:ring-2 group-hover:ring-teal-500/50 transition-all">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="profile" className="w-full h-full object-cover" />
+            ) : (
+              <span>{displayName !== "Loading..." ? displayName.charAt(0).toUpperCase() : "W"}</span>
+            )}
           </div>
         </Link>
       </div>

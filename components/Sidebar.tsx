@@ -52,19 +52,19 @@ export default function Sidebar() {
             active={pathname === "/"}
           />
 
-          <SidebarItem
+          {/* <SidebarItem
             icon={<BotMessageSquare size={18} />}
             label="AI Assistant"
             href="/assistant"
             active={pathname === "/assistant"}
-          />
+          /> 
 
           <SidebarItem
             icon={<LayoutDashboard size={18} />}
             label="Dashboard"
             href="/dashboard"
             active={pathname === "/dashboard"}
-          />
+          /> */}
 
           <SidebarItem
             icon={<Settings size={18} />}

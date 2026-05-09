@@ -4,17 +4,15 @@ import { User, Lock, Bell, Info } from "lucide-react";
 import Card from "@/components/Card";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { supabase } from "@/supabase"; // มั่นใจว่า import ถูกที่นะครับ
+import { supabase } from "@/supabase"; 
 
 export default function SettingsPage() {
   const [enabled, setEnabled] = useState(true);
   
-  // เพิ่ม State เพื่อเก็บข้อมูลโปรไฟล์จริง
   const [name, setName] = useState("Loading...");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // ดึงข้อมูลจาก Supabase ทันทีที่โหลดหน้า
   useEffect(() => {
     async function fetchProfile() {
       const { data, error } = await supabase
@@ -41,7 +39,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile Card - ปรับปรุงให้ดึงข้อมูลจาก State */}
+      {/* Profile Card */}
       <Card className="p-6 border border-default bg-card shadow-sm">
         <div className="flex items-center gap-4">
           <div className="relative">
@@ -90,7 +88,8 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* Preferences Section */}
+      {/* --- ส่วน Preferences และปุ่มแจ้งเตือน (ถูกคอมเมนต์ไว้) --- */}
+      {/* 
       <Card className="p-6 border border-default bg-card shadow-sm">
         <h2 className="mb-4 font-medium text-foreground">Preferences</h2>
 
@@ -107,7 +106,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Toggle Switch ที่เลื่อนได้จริง */}
           <button
             onClick={() => setEnabled(!enabled)}
             className={`w-11 h-6 rounded-full relative transition-colors duration-200 ease-in-out ${
@@ -122,6 +120,7 @@ export default function SettingsPage() {
           </button>
         </div>
       </Card>
+      */}
 
       {/* About Section */}
       <Link href="/about" className="block">

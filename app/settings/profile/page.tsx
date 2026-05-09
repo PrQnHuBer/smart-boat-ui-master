@@ -12,30 +12,30 @@ export default function EditProfilePage() {
   
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); // State สำหรับจัดการอีเมล
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 1. ดึงข้อมูลโปรไฟล์ปัจจุบันจาก Supabase
+  // 1. ดึงข้อมูลโปรไฟล์ปัจจุบันจาก Supabase รวมถึงอีเมล
   useEffect(() => {
     async function fetchProfile() {
       const { data, error } = await supabase
         .from("profiles")
-        .select("full_name, username, avatar_url")
+        .select("full_name, username, avatar_url, email") // เพิ่ม email ในคำสั่ง select
         .single();
 
       if (data) {
         setName(data.full_name || "");
         setUsername(data.username || "");
         setAvatarUrl(data.avatar_url || null);
-        setEmail("woraprat@smartboat.com"); 
+        setEmail(data.email || ""); // นำค่าอีเมลจาก Database มาใส่ State
       }
     }
     fetchProfile();
   }, []);
 
-  // 2. ฟังก์ชันอัปโหลดรูปภาพไปยัง Supabase Storage
+  // 2. ฟังก์ชันอัปโหลดรูปภาพ
   const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
@@ -64,7 +64,7 @@ export default function EditProfilePage() {
     }
   };
 
-  // 3. ฟังก์ชันบันทึกข้อมูลและบังคับโหลดข้อมูลใหม่ (Update Success Logic)
+  // 3. ฟังก์ชันบันทึกข้อมูลทั้งหมดกลับไปยัง Supabase
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -73,15 +73,14 @@ export default function EditProfilePage() {
         .update({ 
           full_name: name, 
           username: username,
-          avatar_url: avatarUrl 
+          avatar_url: avatarUrl,
+          email: email // เพิ่มการบันทึกอีเมลลงในฐานข้อมูล
         })
         .match({ id: '550e8400-e29b-41d4-a716-446655440000' });
 
       if (error) throw error;
 
       alert("Profile updated successfully!");
-      
-      // บังคับให้หน้าเว็บโหลดข้อมูลใหม่จาก Database ทันทีและกลับไปหน้า settings
       window.location.href = "/settings"; 
 
     } catch (err: any) {
@@ -93,7 +92,6 @@ export default function EditProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 p-4">
-      {/* --- Header --- */}
       <div className="flex items-center gap-4">
         <button 
           onClick={() => router.back()}
@@ -109,7 +107,7 @@ export default function EditProfilePage() {
 
       <Card className="p-8 border border-default bg-card shadow-lg space-y-8">
         
-        {/* --- Profile Picture Section --- */}
+        {/* Profile Picture Section */}
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-foreground">Profile Picture</label>
           <div className="flex items-center gap-6">
@@ -151,7 +149,7 @@ export default function EditProfilePage() {
           </div>
         </div>
 
-        {/* --- Form Fields --- */}
+        {/* Form Fields */}
         <div className="border-t border-default pt-8 space-y-5">
           {/* Full Name */}
           <div className="flex flex-col gap-2">
@@ -160,7 +158,7 @@ export default function EditProfilePage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter full name"
-              className="bg-background border border-default rounded-xl px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-teal-500/50 transition placeholder:text-muted/50"
+              className="bg-background border border-default rounded-xl px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-teal-500/50 transition"
             />
           </div>
 
@@ -171,23 +169,23 @@ export default function EditProfilePage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter username"
-              className="bg-background border border-default rounded-xl px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-teal-500/50 transition placeholder:text-muted/50"
+              className="bg-background border border-default rounded-xl px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-teal-500/50 transition"
             />
           </div>
 
-          {/* Email Address */}
+          {/* Email Address - แก้ไขให้รับค่าจาก State email */}
           <div className="flex flex-col gap-2">
             <label className="text-sm text-muted">Email Address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email address"
               className="bg-background border border-default rounded-xl px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-teal-500/50 transition placeholder:text-muted/50"
             />
           </div>
         </div>
 
-        {/* --- Action Buttons --- */}
         <div className="border-t border-default pt-8 flex gap-4">
           <button 
             type="button"
