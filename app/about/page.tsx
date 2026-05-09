@@ -3,15 +3,21 @@
 import Card from "@/components/Card";
 import { GraduationCap, Mail, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-// 1. Import รูปภาพจากโฟลเดอร์ images
+
+// Import รูปภาพ
 import githubLogo from "../../images/Github.png";
 import linkedinLogo from "../../images/linkedin.jpg";
+import chatImg from "../../images/ฉัตร.jpg";
+import muangImg from "../../images/ม่วง.jpg";
+import mintImg from "../../images/มิ้น.jpg";
+import heartImg from "../../images/ฮาท.jpg";
+import sauLogo from "../../images/444.png"; 
 
 export default function AboutPage() {
   const router = useRouter();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 p-4">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 p-4">
       {/* Header with Back Button */}
       <div className="flex items-center gap-4">
         <button 
@@ -21,22 +27,27 @@ export default function AboutPage() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground leading-none">About Us</h1>
-          <p className="text-muted text-sm mt-1">Meet the team behind Smart Boat</p>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-none">About Us</h1>
+          <p className="text-muted text-xs md:text-sm mt-1">Meet the team behind Smart Boat</p>
         </div>
       </div>
 
       {/* University Section */}
-      <Card className="p-8 border border-default bg-card flex gap-6 items-center shadow-xl">
+      <Card className="p-6 md:p-8 border border-default bg-card flex flex-col md:flex-row gap-6 items-center shadow-xl text-center md:text-left">
         <div className="relative shrink-0">
-          <div className="w-20 h-20 rounded-2xl bg-teal-500 flex items-center justify-center text-white shadow-[0_0_25px_rgba(20,184,166,0.4)]">
-            <GraduationCap size={40} />
+          {/* พื้นหลังไอคอนโลโก้เป็นสีขาวคงที่ตามที่ต้องการ */}
+          <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center p-3 shadow-[0_0_25px_rgba(255,255,255,0.1)] border border-slate-200">
+            <img 
+              src={sauLogo.src} 
+              alt="SAU Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
 
         <div className="space-y-2">
-          <h2 className="font-bold text-xl text-foreground">Chulalongkorn University</h2>
-          <div className="flex items-center gap-2 text-muted text-sm">
+          <h2 className="font-bold text-lg md:text-xl text-foreground">Southeast Asia University</h2>
+          <div className="flex items-center justify-center md:justify-start gap-2 text-muted text-sm font-medium">
             <GraduationCap size={16} />
             <span>Faculty of Engineering</span>
           </div>
@@ -50,50 +61,42 @@ export default function AboutPage() {
 
       {/* Team Section */}
       <div>
-        <h2 className="mb-5 font-bold text-foreground text-lg">Our Team</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <h2 className="mb-5 font-bold text-foreground text-lg px-1">Our Team</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <TeamCard 
-            name="Woraprat Chaiyakul" 
-            role="Full Stack Developer" 
-            email="woraprat@smartboat.com" 
-            color="bg-teal-500" 
-            initial="W" 
+            name="Woraprat Khruttamkham"  
+            image={mintImg.src} 
+            logo={sauLogo.src}
             roleColor="text-teal-400"
           />
           <TeamCard 
-            name="Somchai Prasert" 
-            role="AI Engineer" 
-            email="somchai@smartboat.com" 
-            color="bg-blue-500" 
-            initial="S" 
+            name="Chatchai Chaisan"  
+            image={muangImg.src} 
+            logo={sauLogo.src}
             roleColor="text-blue-400"
           />
           <TeamCard 
-            name="Anchana Wongsa" 
-            role="UI/UX Designer" 
-            email="anchana@smartboat.com" 
-            color="bg-purple-500" 
-            initial="A" 
+            name="Chatsiri Taobumrung"  
+            image={chatImg.src} 
+            logo={sauLogo.src}
             roleColor="text-purple-400"
           />
           <TeamCard 
-            name="Preecha Tanaka" 
-            role="IoT Specialist" 
-            email="preecha@smartboat.com" 
-            color="bg-orange-500" 
-            initial="P" 
+            name="Thada Siangwaong"
+            image={heartImg.src} 
+            logo={sauLogo.src}
             roleColor="text-orange-400"
           />
         </div>
       </div>
 
       {/* Project Info Section */}
-      <Card className="p-8 border border-default bg-card shadow-lg">
-        <h2 className="font-bold text-foreground mb-6 text-lg">Project Information</h2>
+      <Card className="p-6 md:p-8 border border-default bg-card shadow-lg">
+        <h2 className="font-bold text-foreground mb-4 md:mb-6 text-lg">Project Information</h2>
         <div className="divide-y divide-default">
           <InfoRow label="Version" value="1.0.0" />
           <InfoRow label="Release Date" value="March 2026" />
-          <InfoRow label="Technologies" value="React, TypeScript, Tailwind CSS, IoT" />
+          <InfoRow label="Technologies" value="React, TypeScript, Tailwind, IoT" />
           <InfoRow label="License" value="Academic Use Only" />
         </div>
       </Card>
@@ -101,40 +104,24 @@ export default function AboutPage() {
   );
 }
 
-function TeamCard({ name, role, email, color, initial, roleColor }: any) {
+// แก้ไขฟังก์ชัน TeamCard ให้ถูกต้อง
+function TeamCard({ name, role, image, logo, roleColor }: any) {
   return (
-    <Card className="p-6 border border-default bg-card hover:border-teal-500/30 transition-all duration-300 shadow-md">
-      <div className="flex items-center gap-5 mb-6">
-        <div className={`w-14 h-14 rounded-full ${color} flex items-center justify-center text-white text-xl font-bold shadow-lg`}>
-          {initial}
+    <Card className="p-5 md:p-6 border border-default bg-card transition-all duration-300 shadow-md group">
+      <div className="flex items-center gap-4 md:gap-5">
+        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 border-teal-500/20 shadow-lg shrink-0 group-hover:border-teal-500 transition-colors">
+          <img 
+            src={image} 
+            alt={name} 
+            className="w-full h-full object-cover"
+          />
         </div>
 
-        <div className="space-y-1">
-          <p className="font-bold text-foreground">{name}</p>
-          <p className={`text-sm font-medium ${roleColor}`}>{role}</p>
-          <div className="flex items-center gap-2 text-muted text-xs">
-            <Mail size={14} />
-            <span>{email}</span>
-          </div>
+        <div className="space-y-1 min-w-0 flex-1">
+          <p className="font-bold text-foreground truncate text-sm md:text-base">{name}</p>
+          <p className={`text-xs md:text-sm font-medium ${roleColor}`}>{role}</p>
+          
         </div>
-      </div>
-
-      <div className="flex gap-3">
-        {/* เปลี่ยนจาก Icon เป็นรูปภาพที่ Import มา */}
-        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl transition-colors border border-default group">
-          <img 
-            src={githubLogo.src} 
-            alt="GitHub" 
-            className="w-5 h-5 object-contain opacity-70 group-hover:opacity-100 dark:invert transition-opacity" 
-          />
-        </button>
-        <button className="flex-1 h-10 flex items-center justify-center bg-muted/10 hover:bg-muted/20 rounded-xl transition-colors border border-default group">
-          <img 
-            src={linkedinLogo.src} 
-            alt="LinkedIn" 
-            className="w-5 h-5 object-contain rounded-sm opacity-70 group-hover:opacity-100 transition-opacity" 
-          />
-        </button>
       </div>
     </Card>
   );
@@ -142,9 +129,9 @@ function TeamCard({ name, role, email, color, initial, roleColor }: any) {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center py-4">
-      <span className="text-muted text-sm font-medium">{label}</span>
-      <span className="text-foreground text-sm font-semibold">{value}</span>
+    <div className="flex justify-between items-center py-3 md:py-4 gap-2">
+      <span className="text-muted text-xs md:text-sm font-medium shrink-0">{label}</span>
+      <span className="text-foreground text-xs md:text-sm font-semibold text-right">{value}</span>
     </div>
   );
 }
