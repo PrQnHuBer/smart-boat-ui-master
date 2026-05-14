@@ -1,140 +1,143 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import Card from "@/components/Card";
-import { Video, Bot } from "lucide-react";
+import { Bot, Navigation, Sun, Gauge, Thermometer, Droplets, Cloud } from "lucide-react";
 
 export default function DashboardPage() {
-  const [weather, setWeather] = useState({
-    condition: "รอ AI วิเคราะห์...",
-    temp: "--",
-    humidity: "--",
-    wind: "--",
+  const [data, setData] = useState<any>({
+    temp: null, humidity: null, cloud: null, rain: null, 
+    decision: null, reason: null, soil: null, light: null,
+    lastUpdate: "--"
   });
 
-  const [aiAdvice, setAiAdvice] = useState<string>("กำลังเตรียมข้อมูลสภาพอากาศ...");
-  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbz4LsOaluTT2g1PqlpyaojfhanEsUcOQ-M0XB06JQwb9TVgb-lmV5Tg5Jf0kTUNig/exec";
 
-  const askAI = async (rawData: any) => {
-    setIsAiLoading(true);
+  // ฟังก์ชันช่วยตรวจสอบและแสดงผล (ปรับปรุงตามเงื่อนไขล่าสุด)
+  const formatValue = (value: any, unit: string = "") => {
+    // 1. เช็คกรณีข้อมูลว่าง หรือ "หาค่าไม่เจอ"
+    if (value === null || value === undefined || value === "หาค่าไม่เจอ" || value === "อ่านค่าไม่ได้") {
+      return <span className="text-red-500 font-bold animate-pulse text-sm">หาค่าไม่เจอ</span>;
+    }
+    
+    // 2. จัดการกรณีหน่วยเป็น % (แปลง 0.95 -> 95%)
+    if (unit === "%") {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        // ถ้าค่า <= 1 (เช่น 0.95) ให้คูณ 100 | ถ้า > 1 (เช่น 95) ให้ใช้ค่าตรงๆ
+        const displayNum = numValue <= 1 ? Math.round(numValue * 100) : Math.round(numValue);
+        return `${displayNum}%`;
+      }
+    }
+    
+    return `${value}${unit}`;
+  };
+
+  const fetchAllData = async () => {
     try {
-      const res = await fetch("/api/weather-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weatherData: rawData }),
-      });
+      const res = await fetch(GOOGLE_SHEET_URL);
+      const json = await res.json();
       
-      const aiData = await res.json();
-      
-      setWeather({
-        condition: `${aiData.condition || "วิเคราะห์ล้มเหลว"} ${aiData.emoji || ""}`,
-        temp: aiData.temp || rawData.temp,
-        humidity: aiData.humidity || rawData.humidity,
-        wind: aiData.wind || rawData.wind,
+      setData({
+        ...json,
+        lastUpdate: new Date().toLocaleTimeString('th-TH')
       });
-      
-      setAiAdvice(aiData.advice || "ไม่สามารถสรุปคำแนะนำได้");
-    } catch (err) {
-      setWeather({
-        condition: "โหมดออฟไลน์",
-        temp: rawData.temp,
-        humidity: rawData.humidity,
-        wind: rawData.wind,
-      });
-      setAiAdvice("การเชื่อมต่อ AI ขัดข้อง");
-    } finally {
-      setIsAiLoading(false);
+    } catch (err) { 
+      console.error("Fetch Error:", err); 
+      setData((prev: any) => ({ ...prev, lastUpdate: "เชื่อมต่อล้มเหลว" }));
     }
   };
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=13.75&longitude=100.5&current_weather=true&hourly=relativehumidity_2m"
-        );
-        const data = await res.json();
-        const current = data.current_weather;
-
-        const rawData = {
-          temp: `${current.temperature}°C`,
-          humidity: `${data.hourly.relativehumidity_2m[0]}%`,
-          wind: `${current.windspeed} km/h`,
-        };
-
-        askAI(rawData);
-      } catch (err) {
-        setWeather(prev => ({ ...prev, condition: "เชื่อมต่อล้มเหลว" }));
-      }
-    };
-    fetchWeather();
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 60000); // อัปเดตทุก 1 นาที
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* ส่วนบน: Camera และ Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 overflow-hidden bg-slate-900/50">
-          <div className="px-6 py-4 border-b border-white/10 flex justify-between items-center">
-            <h2 className="flex items-center gap-2 font-medium text-gray-200">
-              <Video size={18} /> Camera Feed
-            </h2>
-            <span className="bg-red-500 text-white text-[10px] px-3 py-1 rounded-full animate-pulse">● LIVE</span>
+    <div className="w-full space-y-6">
+      <div className="flex justify-between items-center border-b border-default pb-4">
+        <h1 className="text-2xl font-bold text-[#1a4d2e] dark:text-teal-400 font-sans">
+          Smart Farm Dashboard
+        </h1>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="space-y-4">
+          <p className="text-[12px] font-bold uppercase tracking-widest text-[#1a4d2e] dark:text-teal-400 px-1">
+            ค่าจากเซนเซอร์จริง (MQTT)
+          </p>
+          <div className="space-y-3">
+            <StatusCard icon={<Gauge className="text-emerald-500" />} title="ความชื้นในดิน" value={formatValue(data.soil, "%")} />
+            <StatusCard icon={<Sun className="text-yellow-500" />} title="แสง" value={formatValue(data.light)} />
           </div>
-          <div className="h-[420px] bg-slate-800/50 flex items-center justify-center italic text-gray-500">
-            Waiting for video stream...
+        </div>
+
+        <Card className="lg:col-span-2 p-8 rounded-3xl border border-default bg-card h-fit">
+          <h2 className="flex items-center gap-2 font-bold mb-6 border-b border-default pb-2 text-[#1a4d2e] dark:text-teal-400">
+            <Navigation size={18} /> STATUS DETAIL
+          </h2>
+          <div className="grid grid-cols-1 gap-4 font-medium text-sm">
+            <InfoRow label="MQTT STATUS" value="Connected" status="text-teal-500 font-bold" />
+            <InfoRow label="DATA SOURCE" value="Google Sheets API" />
+            <InfoRow label="LAST UPDATE" value={data.lastUpdate} />
           </div>
         </Card>
 
-        <Card className="p-6 bg-slate-900/50 flex flex-col justify-between">
-          <div className="space-y-4">
-            <h2 className="font-medium text-gray-200 uppercase text-xs tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 bg-teal-400 rounded-full"></span> System Status
-            </h2>
-            <Row label="Format" value="1920 × 1080" />
-            <Row label="FPS" value="30" />
-            <Row label="Latency" value="45ms" />
-          </div>
-
-          <div className="mt-8 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-             <h3 className="flex items-center gap-2 text-blue-400 text-[10px] font-bold uppercase mb-2">
-               <Bot size={16} /> Gemini AI Analysis
-             </h3>
-             <p className="text-[13px] text-gray-200 italic">
-               {isAiLoading ? "กำลังวิเคราะห์..." : `"${aiAdvice}"`}
-             </p>
+        <Card className="p-8 rounded-3xl border border-default bg-card shadow-lg shadow-teal-500/5">
+          <h2 className="flex items-center gap-2 font-bold mb-6 text-[#1a4d2e] dark:text-teal-400">
+            <Bot size={20} /> AI Analysis
+          </h2>
+          <div className={`text-center py-8 border-2 border-dashed border-default rounded-[2rem] ${data.decision === "Yes" ? 'bg-green-500/5' : 'bg-slate-50 dark:bg-teal-500/10'}`}>
+            <h1 className={`text-4xl font-black mb-2 ${data.decision === "Yes" ? "text-green-500" : (data.decision === "No" ? "text-red-500" : "text-gray-400")}`}>
+              {data.decision === "Yes" ? "ควรรดน้ำ" : (data.decision === "No" ? "ไม่ต้องรดน้ำ" : "รอข้อมูล...")}
+            </h1>
+            <p className="text-muted text-xs italic px-4 leading-relaxed">{data.reason || "ไม่พบรายละเอียดเหตุผล"}</p>
           </div>
         </Card>
       </div>
 
-      {/* ส่วนล่าง: Weather Cards */}
-      <Card className="p-8 bg-slate-900/50">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-          <WeatherCard color="from-orange-500 to-yellow-400" icon="🌦️" title="สรุปอากาศ" value={weather.condition} />
-          <WeatherCard color="from-blue-600 to-blue-400" icon="🌡️" title="อุณหภูมิ" value={weather.temp} />
-          <WeatherCard color="from-emerald-600 to-emerald-400" icon="💧" title="ความชื้น" value={weather.humidity} />
-          <WeatherCard color="from-slate-600 to-slate-400" icon="🌬️" title="ความเร็วลม" value={weather.wind} />
+      <div className="space-y-4 mt-8">
+        <p className="text-[12px] font-bold uppercase tracking-widest text-[#1a4d2e] dark:text-teal-400 px-1">
+            พยากรณ์อากาศ (API)
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <SmallCard title="อุณหภูมิ" value={formatValue(data.temp, "°C")} color="bg-green-600" />
+          <SmallCard title="ความชื้นอากาศ" value={formatValue(data.humidity, "%")} color="bg-teal-500" />
+          <SmallCard title="ความหนาแน่นเมฆ" value={formatValue(data.cloud, "%")} color="bg-emerald-600" />
+          <SmallCard title="พยากรณ์ฝน" value={formatValue(data.rain, "mm")} color="bg-green-500" />
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+// --- Components ย่อย ---
+function StatusCard({ icon, title, value }: any) {
   return (
-    <div className="flex justify-between text-sm border-b border-white/5 pb-2">
-      <span className="text-gray-400">{label}</span>
-      <span className="text-gray-200">{value}</span>
+    <div className="p-5 rounded-2xl border border-default bg-card flex items-center gap-4 shadow-sm hover:border-teal-500/30 transition-all">
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/50 group-hover:scale-110 transition-transform">{icon}</div>
+      <div>
+        <p className="text-[10px] font-bold uppercase text-muted leading-tight">{title}</p>
+        <div className="text-lg font-bold font-mono text-foreground leading-tight mt-1">{value}</div>
+      </div>
     </div>
   );
 }
 
-function WeatherCard({ icon, title, value, color }: { icon: string; title: string; value: string; color: string; }) {
+function InfoRow({ label, value, status }: any) {
   return (
-    <div className={`h-40 rounded-3xl bg-gradient-to-br ${color} text-white flex flex-col items-center justify-center shadow-lg transition-transform hover:scale-105`}>
-      <div className="text-3xl mb-1">{icon}</div>
-      <p className="text-[10px] opacity-70 uppercase font-bold tracking-widest">{title}</p>
-      <h2 className="font-bold text-lg mt-1 px-4">{value}</h2>
+    <div className="flex justify-between py-3 border-b border-default text-sm">
+      <span className="text-muted">{label}</span>
+      <span className={status || "text-foreground font-semibold"}>{value}</span>
+    </div>
+  );
+}
+
+function SmallCard({ title, value, color }: any) {
+  return (
+    <div className="rounded-3xl shadow-sm overflow-hidden text-center border border-default bg-card h-32 flex flex-col hover:-translate-y-1 transition-transform">
+      <div className={`${color} py-3 text-white text-sm font-bold uppercase tracking-wider`}>{title}</div>
+      <div className="flex-1 flex items-center justify-center text-3xl font-black font-mono text-foreground italic">{value}</div>
     </div>
   );
 }

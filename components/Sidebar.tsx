@@ -57,14 +57,14 @@ export default function Sidebar() {
             label="AI Assistant"
             href="/assistant"
             active={pathname === "/assistant"}
-          /> 
+          /> */}
 
           <SidebarItem
             icon={<LayoutDashboard size={18} />}
             label="Dashboard"
             href="/dashboard"
             active={pathname === "/dashboard"}
-          /> */}
+          /> 
 
           <SidebarItem
             icon={<Settings size={18} />}
