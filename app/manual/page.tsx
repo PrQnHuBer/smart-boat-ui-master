@@ -5,7 +5,7 @@ import Card from "@/components/Card";
 import { 
   ArrowLeft, ArrowUp, ArrowDown, Square, 
   RotateCcw, RotateCw, Droplets, Fan, 
-  Settings2, ArrowRight
+  Settings2, ArrowRight, Power, PowerOff
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import mqtt from "mqtt";
@@ -52,20 +52,35 @@ export default function ManualControlPage() {
     }
   };
 
-  // --- 3. Valve Control ---
+  // --- 3. Valve Control (Individual) ---
   const handleValve = (side: "L" | "R") => {
     if (side === "L") {
       const newState = !leftValve;
       setLeftValve(newState);
-      sendCommand(newState ? "valveR_on" : "valveR_off");
+      sendCommand(newState ? "valvel_on" : "valvel_off");
     } else {
       const newState = !rightValve;
       setRightValve(newState);
-      sendCommand(newState ? "valveL_on" : "valveL_off");
+      sendCommand(newState ? "valver_on" : "valver_off");
     }
   };
 
-  // --- 4. Motor Control ---
+  // --- 4. Valve Control (All) ---
+  const handleAllValves = (action: "ON" | "OFF") => {
+    const isON = action === "ON";
+    setLeftValve(isON);
+    setRightValve(isON);
+    
+    if (isON) {
+      sendCommand("valvel_on");
+      sendCommand("valver_on");
+    } else {
+      sendCommand("valvel_off");
+      sendCommand("valver_off");
+    }
+  };
+
+  // --- 5. Motor Control ---
   const handleMove = (mode: string) => {
     setFanMode(mode);
     if (mode === "Forward") {
@@ -77,38 +92,27 @@ export default function ManualControlPage() {
     }
   };
 
-  // --- 5. Turn Control (11 Degrees) ---
+  // --- 6. Turn Control ---
   const handleTurnStep = (dir: "L" | "R") => {
     setServoAngle(prev => {
       const next = dir === "L" ? prev - 11 : prev + 11;
       return (next + 360) % 360; 
     });
-    
-    if (dir === "L") {
-      sendCommand("Turn_R_11");
-    } else {
-      sendCommand("Turn_L_11");
-    }
+    sendCommand(dir === "L" ? "turn_l_11" : "turn_r_11");
   };
 
-  // --- 6. Turn Control (22.5 Degrees) ---
   const handleTurnWide = (dir: "L" | "R") => {
     setServoAngle(prev => {
       const next = dir === "L" ? prev - 22.5 : prev + 22.5;
       return (next + 360) % 360; 
     });
-    
-    if (dir === "L") {
-      sendCommand("Turn_R_22.5");
-    } else {
-      sendCommand("Turn_L_22.5");
-    }
+    sendCommand(dir === "L" ? "turn_l_22.5" : "turn_r_22.5");
   };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-[1600px] mx-auto min-h-screen bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-slate-200 transition-colors duration-300">
       
-      {/* SIDEBAR */}
+      {/* SIDEBAR Status */}
       <aside className="w-full lg:w-80 shrink-0">
         <Card className="p-5 border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1a2233] space-y-6 sticky top-4 rounded-2xl shadow-xl">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-4">
@@ -137,7 +141,7 @@ export default function ManualControlPage() {
         </Card>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTROL PANEL */}
       <main className="flex-1 space-y-6">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="px-4 py-2 bg-white dark:bg-[#1a2233] hover:bg-slate-100 dark:hover:bg-[#252f44] rounded-lg flex items-center gap-2 text-sm border border-slate-200 dark:border-white/5 text-slate-900 dark:text-slate-200 transition active:scale-95 shadow-sm">
@@ -150,12 +154,13 @@ export default function ManualControlPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Valve Control */}
+          {/* Valve Control Block */}
           <Card className="p-6 bg-white dark:bg-[#1a2233] border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500"><Droplets size={20} /></div>
               <h2 className="font-bold text-lg text-slate-900 dark:text-white">Valve Control</h2>
             </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => handleValve("L")} className={`p-8 rounded-2xl border-2 transition-all active:scale-95 ${leftValve ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20" : "bg-slate-50 dark:bg-[#0f172a] border-slate-200 dark:border-white/5 text-slate-500"}`}>
                 <ArrowLeft size={28} className="mx-auto mb-2" />
@@ -166,9 +171,25 @@ export default function ManualControlPage() {
                 <p className="text-sm font-bold">Right Valve</p>
               </button>
             </div>
+
+            {/* ส่วนที่เพิ่มใหม่: Master Valve Control (บริเวณพื้นที่สีเขียว) */}
+            <div className="grid grid-cols-2 gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-white/5">
+              <button 
+                onClick={() => handleAllValves("ON")} 
+                className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-500 text-white p-4 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-lg shadow-teal-600/20"
+              >
+                <Power size={16} /> OPEN ALL
+              </button>
+              <button 
+                onClick={() => handleAllValves("OFF")} 
+                className="flex items-center justify-center gap-2 bg-slate-600 hover:bg-slate-500 text-white p-4 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-lg shadow-slate-600/20"
+              >
+                <PowerOff size={16} /> CLOSE ALL
+              </button>
+            </div>
           </Card>
 
-          {/* Turn Control */}
+          {/* Turn Control Block */}
           <Card className="p-6 bg-white dark:bg-[#1a2233] border border-slate-200 dark:border-white/5 rounded-3xl text-center shadow-sm">
             <div className="flex items-center gap-2 mb-4 justify-center">
               <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-500"><RotateCw size={20} /></div>
@@ -185,7 +206,6 @@ export default function ManualControlPage() {
             </div>
             
             <div className="px-2 space-y-4">
-              {/* 11 Degree Buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => handleTurnStep("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-600/20">
                   <RotateCcw size={14}/> Left (11°)
@@ -194,7 +214,6 @@ export default function ManualControlPage() {
                   <RotateCw size={14}/> Right (11°)
                 </button>
               </div>
-              {/* 22.5 Degree Buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => handleTurnWide("L")} className="bg-orange-600 hover:bg-orange-500 text-white p-3 rounded-xl font-bold text-[12px] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-orange-700/20">
                   <RotateCcw size={14}/> Left (22.5°)
@@ -207,7 +226,7 @@ export default function ManualControlPage() {
           </Card>
         </div>
 
-        {/* Motor Control */}
+        {/* Motor Control Block */}
         <Card className="p-6 bg-white dark:bg-[#1a2233] border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <div className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400"><Fan size={20} /></div>
