@@ -10,7 +10,7 @@ export default function DashboardPage() {
     lastUpdate: "--"
   });
 
-  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwYwAEnVFe0yPko_aWaFqGmuHfNBVH0qKJwysl_ymZay6-MbEVFGSq_rs4zGC7M3Po/exec";
+  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxm87HAs-l1_IXK63U2h10ZVFpfZgCySXW0b89L72vQB9Urwl0WwORmg6oSmWbfh0-w/exec";
 
   // ฟังก์ชันช่วยตรวจสอบและแสดงผล (ปรับปรุงตามเงื่อนไขล่าสุด)
   const formatValue = (value: any, unit: string = "") => {
